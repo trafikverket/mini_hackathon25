@@ -27,8 +27,7 @@
                       url: "https://api.trafikinfo.trafikverket.se/v2/data.json",
                       error: function (msg) {
                           if (msg.statusText == "abort") return;
-                          alert("Request failed: " + msg.statusText + "
-" + msg.responseText);
+                          alert("Request failed: " + msg.statusText + "" + msg.responseText);
                       }
                   });
               }
