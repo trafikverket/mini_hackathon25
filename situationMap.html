@@ -2,11 +2,11 @@
   <html xmlns="http://www.w3.org/1999/xhtml">
   <head>
       <title></title>
-      <link rel="stylesheet" href="OpenLayers/ol.css" />
+      <link rel="stylesheet" href="https://unpkg.com/ol@latest/ol.css">
       <link href="https://stackpath.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css" rel="stylesheet">
       <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
       <script src="https://stackpath.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
-      <script type="text/javascript" src="OpenLayers/ol.js"></script>
+      <script src="https://unpkg.com/ol@latest/dist/ol.js"></script>
       <style>
           #map {
               height: 800px;  
@@ -44,8 +44,7 @@
               url: apiUrl + "data.json",
               error: function (msg) {
                   if (msg.statusText == "abort") return;
-                  alert("Request failed: " + msg.statusText + "
-" + msg.responseText);
+                  alert("Request failed: " + msg.statusText + "" + msg.responseText);
               }
           });
       } catch (e) {
@@ -54,18 +53,16 @@
   
       //Creates the OpenLayers map object (http://openlayers.org/en/master/apidoc/ol.Map.html)
       var map = new ol.Map({
-          controls: ol.control.defaults().extend([new ol.control.FullScreen()]),
-          target: 'map',
-          layers: [
-              new ol.layer.Tile({
-                  source: new ol.source.OSM() //Background layer
-              })
-          ],
-          view: new ol.View({
-              center: ol.proj.transform([15, 60], 'EPSG:4326', 'EPSG:3857'), //Transforms coordinates to the coordinate system used by the background layer
-              zoom: 4
-          })
-      });
+        target: 'map',
+        layers: [
+            new ol.layer.Tile({ source: new ol.source.OSM() })
+        ],
+        view: new ol.View({
+            center: ol.proj.transform([15, 60], 'EPSG:4326', 'EPSG:3857'),
+            zoom: 4
+        })
+    });
+    map.addControl(new ol.control.FullScreen());
       addVectorLayer(map, "Situations");
       var element = document.getElementById('popup');
   
