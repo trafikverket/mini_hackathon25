@@ -129,7 +129,8 @@
                               SseUrl = response.RESPONSE.RESULT[0].INFO.SSEURL;
                               var responseid = Date.now();
                               var connectButton = " &nbsp; <span class='button is-small is-info is-outlined'>Click to connect to server</span>";
-                              DisplayMessage("ServerSentEventURL received &nbsp; " +"<span class='button is-small is-info is-outlined' " +"onclick=\"ConnectToSseServer('" + SseUrl + "&lasteventid=', '" + responseid + "')\">" +"Click to connect to server</span>" +"<input id='" + responseid + "' style='width: 200px;' class='input is-small is-rounded' " +"type='text' placeholder='LastEventID (optional)'>","info",SseUrl);
+                              DisplayMessage("ServerSentEventURL received &nbsp; <span onclick='ConnectToSseServer("" + SseUrl + "&lasteventid=", "" + responseid + "")' class='button is-small is-info is-outlined'>Click to connect to server</span><input id="" + responseid +"" style='width: 200px;'  class='input is-small is-rounded' type='text' placeholder='LastEventID (optional)'>", "info",
+                                  SseUrl);
                           }
                       }
                       catch (e) {
@@ -146,7 +147,7 @@
           }
           function renderEventSourceData(eventid, data) {
               var content = renderData(data);
-              DisplaySuccessMessage(`EventSource message received. <span class="tag is-primary">id: "${eventid}"</span>`,content);
+              DisplaySuccessMessage("EventSource message received. <span class='tag is-primary'>id: "" + eventid + ""</span>", content);
           }
           function renderData(data) {
               var content = "<table class='table is-bordered is-striped is-narrow is-fullwidth'><thead><tr><th class='col_longtimestring'>Train</th><th>Station</th><th>Time at location</th></tr></thead><tbody>";
