@@ -50,4 +50,3 @@ Detta repository och alla bidrag som görs här licensieras under [CC01-licensen
 Om du är intresserad av att delta i våra mini-hackathons eller vill föreslå idéer, tveka inte att kontakta oss via repo:ns Issues-sektion eller genom att delta i kommande event. Vi uppmuntrar samarbete inom alla expertområden.
 
 **Låt oss bygga något fantastiskt tillsammans!**
-
