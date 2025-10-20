@@ -41,6 +41,23 @@ För att börja använda Trafikverket Öppna API, följ dessa steg:
 3. **Använd din API nyckel**
    - Titta på exemplen i det här repot, lägg in din API nyckel där det behövs. Du kan även se andra exempel på [Trafikverket Datautbytesportal](https://data.trafikverket.se/documentation/datacache/example-code)
 
+## Applikationer byggda på Öppet API:s data.
+
+[Trafikverkets Vägkartan](https://www.trafikverket.se/trafikinformation/vag)
+
+[Trafikverkets Tågkartan](https://www.trafikverket.se/trafikinformation/tagkarta/)
+
+[1409 Trafikinformera](https://1409.se/)
+
+[Tågtavlan](https://xn--tgtavlan-9za.se/app/station/blgc)
+
+[Tågtiden](https://tagtiden.se/)
+
+[Tågtider](https://tagtider.net/)
+
+[Homeassistant – Trafikverket Train](https://www.home-assistant.io/integrations/trafikverket_train/)
+
+
 ## Licens
 
 Detta repository och alla bidrag som görs här licensieras under [CC01-licensen](LICENSE). Se till att dina bidrag följer villkoren i denna licens.
