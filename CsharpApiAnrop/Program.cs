@@ -21,16 +21,18 @@ internal class Program
         Console.WriteLine("--- Trafikverket Cameras ---");
         int camerasToDisplay = 5; // Hur många kameror vi skriver ut
 
-        // Bygger XML-förfrågan med vilka fält vi vill få tillbaka för Camera
+        // Bygger XML-förfrågan med vilka fält vi vill ha (INCLUDE) till vilken objektstyp och schemaversion och antalet träffar (utelämna limitToSearch eller sätt till -1 för att inte begränsa)
         var xmlRequest = BuildRequestXml(
             includes:
             [
                 "Id","Name","Type","Active","CountyNo"
-            ]
+            ],
+            objType: "Camera",
+            schemaVersion: "1",
+            limitToSearch: camerasToDisplay // Begränsar antal kameror i svaret om man vill visa alla kan man utelämna denna parameter
         );
 
-        Console.WriteLine(xmlRequest); // Visar hur XML-bodyn ser ut
-        string xml;
+        //string xml;
         try
         {
             // Skickar POST med XML till API:t
@@ -44,7 +46,9 @@ internal class Program
                 return;
             }
             // Läser svar som text (XML)
-            xml = await resp.Content.ReadAsStringAsync();
+            string xml = await resp.Content.ReadAsStringAsync();
+            var xdoc = XDocument.Parse(xml);
+            Console.WriteLine(xdoc);
         }
         catch (Exception ex)
         {
@@ -52,18 +56,10 @@ internal class Program
             Console.WriteLine("Request failed: " + ex.Message);
             return;
         }
-
-        // Tolkar kamera-XML till lista av Camera-objekt (egen parsning i klassen Camera)
-        var cameras = Camera.ParseFromXml(xml);
-        Console.WriteLine($"Fetched {cameras.Count} cameras total.\n");
-        Console.WriteLine($"Showing first {Math.Min(camerasToDisplay, cameras.Count)}:\n");
-
-        // Skriver ut enkel sammanfattning av de första kamerorna
-        foreach (var camera in cameras.Take(camerasToDisplay))
-        {
-            Console.WriteLine($"[{camera.Id}] {camera.Name} | {camera.Type} | Active={camera.Active} | Counties={string.Join(",", camera.Counties)}");
-        }
         Console.WriteLine("\n\n\n\n\n\n");
+
+
+
 
         // 2) Anropa Vägnummer med specificerade INCLUDE-fält (begränsad data)
         Console.WriteLine("--- Vägnummer (vägdata) med filter ---");
@@ -103,6 +99,9 @@ internal class Program
         Console.WriteLine("\n---Done---");
         Console.WriteLine("\n\n\n\n\n\n");
 
+
+
+
         // 3) Samma Vägnummer men utan INCLUDE => mer komplett data
         Console.WriteLine("\n--- Vägnummer (vägdata) Med all data ---");
         try
@@ -141,12 +140,13 @@ internal class Program
 
 
     // Hjälpmetod som bygger XML för kamera-anropet baserat på vilka fält (INCLUDE) vi vill ha
-    private static string BuildRequestXml(IEnumerable<string> includes)
+    private static string BuildRequestXml(IEnumerable<string> includes, string objType, string schemaVersion, int limitToSearch = -1 )
     {
+        string limitString = (limitToSearch == -1) ? "" : $" limit='{limitToSearch}'";
         var sb = new StringBuilder();
         sb.Append("<REQUEST>");
         sb.Append($"<LOGIN authenticationkey='{ApiKey}'/>");
-        sb.Append("<QUERY objecttype='Camera' schemaversion='1'>");
+        sb.Append($"<QUERY objecttype='{objType}' schemaversion='{schemaVersion}'{limitString}>");
         foreach (var inc in includes)
             sb.Append($"<INCLUDE>{inc}</INCLUDE>");
         sb.Append("</QUERY></REQUEST>");
