@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<!-- Länk till trafikverket api: https://data.trafikverket.se/home -->
+<!-- Länk till routing apier: https://project-osrm.org/ , https://openrouteservice.org/ -->
+<head>
+    <title>Trafikverket Hackaton 2025</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <link rel="icon" type="image/png" href="favicon.ico">
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        #map {
+            height: 100vh;
+            width: 100vw;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        #search-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            display: flex;
+            gap: 8px;
+        }
+        #search-input {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 300px;
+        }
+        #search-button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        #search-button:hover {
+            background-color: #45a049;
+        }
+        #search-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="search-container">
+        <input type="text" id="search-input" placeholder="Sök efter plats i Sverige..." />
+        <button id="search-button">Sök</button>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        let userLocation = null;
+        let searchMarker = null;
+        let allParkingMarkers = []; 
+
+        // Skapa karta med Sverige som start position.
+        const map = L.map("map").setView([60.128161, 18.643501], 5);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+          
+        const routingControl = L.Routing.control({
+            waypoints: [],
+            routeWhileDragging: true,
+            collapsible: true,
+            show: false 
+        }).addTo(map);
+
+        // Funktion för att beräkna kortaste avståndet från en parkering till rutten
+        function distanceToRoute(parkingLatLng, routeCoords) {
+            if (!routeCoords || routeCoords.length === 0) return Infinity;
+
+            let minDistance = Infinity;
+            // Kolla avståndet till varje koordinat i rutten
+            for (let i = 0; i < routeCoords.length; i++) {
+                const distance = parkingLatLng.distanceTo(routeCoords[i]);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                }
+            }
+            return minDistance;
+        }
+
+        // Funktion för att filtrera parkeringar baserat på rutten
+        function filterParkingsByRoute(routeCoordinates) {
+            const maxDistance = 1000; // 1 km från rutten
+            let visibleCount = 0;
+            let hiddenCount = 0;
+
+            allParkingMarkers.forEach(markerData => {
+                const distance = distanceToRoute(markerData.position, routeCoordinates);
+
+                if (distance <= maxDistance) {
+                    // Visa parkering som är nära rutten
+                    if (!map.hasLayer(markerData.marker)) {
+                        markerData.marker.addTo(map);
+                    }
+                    visibleCount++;
+                } else {
+                    // Dölj parkering som är för långt från rutten
+                    if (map.hasLayer(markerData.marker)) {
+                        map.removeLayer(markerData.marker);
+                    }
+                    hiddenCount++;
+                }
+            });
+        }
+
+        // Händelselyssnare för när en rutt hittas
+        routingControl.on('routesfound', function(e) {
+            if (e.routes && e.routes.length > 0) {
+                const route = e.routes[0];
+                const routeCoordinates = route.coordinates;
+
+                // Filtrera parkeringar baserat på rutten
+                filterParkingsByRoute(routeCoordinates);
+            }
+        });
+
+        // Funktion för att markera användarens plats.
+        function setLocation(e) {
+            const radius = e.accuracy / 2;
+
+            map.setView(e.latlng, 13);
+            
+            var iconOptions = { iconUrl: '/static/person-circle.svg', iconSize: [50, 50] };
+            var userIcon = L.icon(iconOptions);
+            
+            var markerOptions = { title: 'UserLocation', clickable: true, draggable: false, icon: userIcon };
+            L.marker(e.latlng, markerOptions)
+                .addTo(map)
+                .bindPopup("Du är inom " + Math.round(radius) + " meter av denna punkt")
+                .openPopup();
+            
+            L.circle(e.latlng, radius).addTo(map);
+
+            userLocation = e.latlng;
+        }
+        
+        map.on('locationfound', setLocation);
+
+        map.locate({setView: false, maxZoom: 16});
+
+        const parkings_url = '/api/parkings';
+
+        fetch(parkings_url)
+            .then(response => response.json())
+            .then(data => {
+                // Kontrollera att data finns och har rätt struktur
+                if (!data || !data.RESPONSE || !data.RESPONSE.RESULT || !data.RESPONSE.RESULT[0] || !data.RESPONSE.RESULT[0].Parking) {
+                    console.error("Ingen parkeringsdata tillgänglig");
+                    return;
+                }
+
+                const parkings = data.RESPONSE.RESULT[0].Parking;
+                
+                parkings.forEach(parking => {
+                    if (parking.Geometry && parking.Geometry.WGS84) {
+                        const coords = parking.Geometry.WGS84.replace('POINT (', '').replace(')', '').split(' ');
+                        const lon = parseFloat(coords[0]);
+                        const lat = parseFloat(coords[1]);
+
+                        if (!isNaN(lat) && !isNaN(lon)) {
+                            const parkingLatLng = L.latLng(lat, lon);
+                            
+                            let parkingInfo = `${parking.Name}`;
+                            if (parking.Description != undefined) {
+                                parkingInfo += "<br>" + parking.Description
+                            }
+
+                            if (parking.OpenStatus === "open") {
+                                parkingInfo += "<br>Status: Öppen"
+                            }
+                            else {
+                                parkingInfo += "<br>Status: Stängd"
+                            }
+
+                            const characteristics = parking.VehicleCharacteristics;
+                            console.log(characteristics)
+                            for (let i = 0; i < characteristics.length; i++) {
+                                parkingInfo += `<br>${characteristics[i].VehicleType}: ${characteristics[i].NumberOfSpaces}`
+                            }
+
+                            const marker = L.marker(parkingLatLng)
+                                .addTo(map)
+                                .bindTooltip(parkingInfo)
+                                .bindPopup(parkingInfo);
+
+                            // Spara markör och position för filtrering
+                            allParkingMarkers.push({
+                                marker: marker,
+                                position: parkingLatLng
+                            });
+
+                            marker.on('click', function() {
+                                // Hämta rutt från användarens position till parkeringen.
+                                if (userLocation) {
+                                    routingControl.setWaypoints([
+                                        userLocation,
+                                        parkingLatLng
+                                    ]);
+                                    routingControl.show();
+                                } else {
+                                    alert("Väntar fortfarande på din plats. Försök igen om en stund.");
+                                }
+                            });
+                        }
+                    }
+                });
+            })
+            .catch(error => {
+                console.error("Ett fel inträffade vid hämtning av parkeringar:", error);
+            });
+
+        // Sökfunktionalitet
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) {
+                alert('Vänligen ange en sökfråga');
+                return;
+            }
+
+            searchButton.disabled = true;
+            searchButton.textContent = 'Söker...';
+
+            try {
+                const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    const lat = data.lat;
+                    const lon = data.lon;
+                    const locationLatLng = L.latLng(lat, lon);
+
+                    // Ta bort tidigare sökmarkör om den finns
+                    if (searchMarker) {
+                        map.removeLayer(searchMarker);
+                    }
+
+                    // Skapa en anpassad ikon för sökresultatet
+                    const searchIcon = L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                        iconSize: [25, 41],
+                        iconAnchor: [12, 41],
+                        popupAnchor: [1, -34],
+                        shadowSize: [41, 41]
+                    });
+
+                    // Placera markör på den sökta platsen
+                    searchMarker = L.marker(locationLatLng, { icon: searchIcon })
+                        .addTo(map)
+                        .bindPopup(`<b>${data.display_name}</b><br><small>Klicka på en parkering för att få vägbeskrivning härifrån</small>`)
+                        .openPopup();
+
+                    // Centrera kartan på den sökta platsen
+                    map.setView(locationLatLng, 13);     
+                    
+                    searchMarker.on('click', function() {
+                        if (userLocation) {
+                            routingControl.setWaypoints([
+                                userLocation,
+                                locationLatLng
+                            ]);
+                        }
+                    });
+                    routingControl.show()
+
+                } else {
+                    alert(data.error || 'Kunde inte hitta platsen');
+                }
+            } catch (error) {
+                console.error('Sökfel:', error);
+                alert('Ett fel uppstod vid sökning');
+            } finally {
+                searchButton.disabled = false;
+                searchButton.textContent = 'Sök';
+            }
+        }
+
+        // Sök när användaren klickar på knappen
+        searchButton.addEventListener('click', performSearch);
+
+        // Sök när användaren trycker Enter i sökfältet
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        });
+    </script>
+</body>
+
+</html>
+
